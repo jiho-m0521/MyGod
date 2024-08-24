@@ -15,6 +15,41 @@ def main(page: ft.Page):
         avgval = e.control.value
         page.update()
 
+    def view_history():
+        raise NotImplementedError
+        page.views.append(
+        ft.View("/history",
+                controls=[
+                        ft.Text("기록", size=30, weight=ft.FontWeight.BOLD),
+                        
+                        # 여기에다 자신의 기록을 저장한 record.txt 파일 내용을 표시하는 코드 작성하기
+                        
+                        ft.ElevatedButton("뒤로가기", on_click=lambda e: page.open(dlg_modal))
+                    ]
+                    
+                )
+        
+        )
+
+    def home():
+        page.views.append(
+                ft.View(
+                    "/home",
+                    controls=[
+                        ft.Text("\n어떤 시험인지 선택해 주세요", size=20, weight=ft.FontWeight.BOLD), 
+                        cg, t, 
+                        ft.Divider(height=1, color="white"),
+                        ft.Text("과목별 점수를 입력해주세요", size=20, weight=ft.FontWeight.BOLD),
+                        math, science, korean, english, social,
+                        ft.CupertinoFilledButton(
+                            content=ft.Text("계산하기!"),
+                            opacity_on_click=0.3,
+                            on_click=calc,
+                        )
+                    ]
+                )
+            )
+    
     # 점수 계산 후 결과 화면으로 이동하는 함수
     def calc(e):
         try:
@@ -62,7 +97,7 @@ def main(page: ft.Page):
                     page.close(dlg_modal)
                     page.go("/")
 
-
+            global dlg_modal
             dlg_modal = ft.AlertDialog(
         modal=True,
         title=ft.Text("저장할까요?"),
@@ -87,6 +122,7 @@ def main(page: ft.Page):
                     ]
                 )
             )
+            
             page.go("/result")
 
         except ValueError:
@@ -121,15 +157,19 @@ def main(page: ft.Page):
                 ft.View(
                     "/",
                     controls=[
-                        ft.Text("\n어떤 시험인지 선택해 주세요", size=20, weight=ft.FontWeight.BOLD), 
-                        cg, t, 
-                        ft.Divider(height=1, color="white"),
-                        ft.Text("과목별 점수를 입력해주세요", size=20, weight=ft.FontWeight.BOLD),
-                        math, science, korean, english, social,
+                        ft.Text("시험 평균 계산기", size=40, weight=ft.FontWeight.BOLD), 
+                        
+                        
                         ft.CupertinoFilledButton(
-                            content=ft.Text("계산하기!"),
+                            content=ft.Text("계산하러 가기"),
                             opacity_on_click=0.3,
-                            on_click=calc,
+                            on_click=home
+                        ),
+                        ft.CupertinoFilledButton(
+                            content=ft.Text("나의 기록"),
+                            opacity_on_click=0.3,
+                            on_click=view_history,
+                            
                         )
                     ]
                 )
