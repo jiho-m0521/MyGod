@@ -15,7 +15,7 @@ def main(page: ft.Page):
         avgval = e.control.value
         page.update()
 
-    def view_history():
+    def view_history(e):
         raise NotImplementedError
         page.views.append(
         ft.View("/history",
@@ -30,8 +30,9 @@ def main(page: ft.Page):
                 )
         
         )
+        page.update()
 
-    def home():
+    def home(e):
         page.views.append(
                 ft.View(
                     "/home",
@@ -49,6 +50,7 @@ def main(page: ft.Page):
                     ]
                 )
             )
+        page.update()
     
     # 점수 계산 후 결과 화면으로 이동하는 함수
     def calc(e):
@@ -157,20 +159,31 @@ def main(page: ft.Page):
                 ft.View(
                     "/",
                     controls=[
-                        ft.Text("시험 평균 계산기", size=40, weight=ft.FontWeight.BOLD), 
+                        ft.Text("\n", size=5, weight=ft.FontWeight.BOLD), 
+                        ft.Image(
+                            src=f"ExamApp.jpg",
+                            width=700,
+                            height=200,
+                            fit=ft.ImageFit.CONTAIN,
+                        ),
                         
                         
                         ft.CupertinoFilledButton(
                             content=ft.Text("계산하러 가기"),
                             opacity_on_click=0.3,
-                            on_click=home
+                            on_click=home,
+                            width=500
                         ),
+                        
                         ft.CupertinoFilledButton(
                             content=ft.Text("나의 기록"),
                             opacity_on_click=0.3,
                             on_click=view_history,
+                            width=500
                             
-                        )
+                        ),
+                        
+    
                     ]
                 )
             )
