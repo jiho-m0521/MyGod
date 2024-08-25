@@ -1,235 +1,491 @@
-import datetime as datetime
-import os as os
+import datetime
 import flet as ft
-
+import json
 
 def main(page: ft.Page):
-    page.window.width = 350
-    page.window.height = 700
-    page.window.resizable = False
+    page.title = "학생 도우미"
+    page.theme_mode = ft.ThemeMode.DARK
+    page.padding = 0
+    page.window_width = 360
+    page.window_height = 640
+    page.window_resizable = False
 
-    # 라디오 그룹 변경 시 실행되는 함수
-    def radiogroup_changed(e):
-        t.value = f"선택된 시험: {e.control.value}고사"
-        global avgval
-        avgval = e.control.value
-        page.update()
+    # 색상 테마 설정
+    primary_color = ft.colors.BLUE
+    secondary_color = ft.colors.ORANGE_700
+    background_color = ft.colors.BLUE_GREY_900
+
+    page.bgcolor = background_color
+
+    def save_data(data, filename):
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+    def load_data(filename):
+        try:
+            with open(filename, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {}
+
+    def save_username(username):
+        user_data = load_data("user_data.json")
+        user_data["username"] = username
+        save_data(user_data, "user_data.json")
+
+    def load_username():
+        user_data = load_data("user_data.json")
+        return user_data.get("username", "")
+
+    def get_latest_exam_result():
+        exam_data = load_data("exam_records.json")
+        if exam_data:
+            latest_exam = max(exam_data.items(), key=lambda x: datetime.datetime.strptime(x[0], "%Y.%m.%d"))
+            date, exam_info = latest_exam
+            return f"{date} {exam_info['type']}고사\n평균: {exam_info['average']:.2f}점"
+        return "아직 기록이 없습니다."
+
+    def validate_score(score):
+        try:
+            score = int(score)
+            return 0 <= score <= 100
+        except ValueError:
+            return False
 
     def view_history(_=None):
+        exam_data = load_data("exam_records.json")
         history_list = ft.ListView(expand=1, spacing=10, padding=20)
         
-        try:
-            with open("record.txt", "r", encoding="utf-8") as file:
-                records = file.read().split("\n\n")  # 각 기록은 빈 줄로 구분됨
-                for record in records:
-                    if record.strip():  # 빈 줄 무시
-                        history_list.controls.append(ft.Text(record, size=14))
-        except FileNotFoundError:
+        if exam_data:
+            for date, exam_info in sorted(exam_data.items(), reverse=True):
+                history_list.controls.append(
+                    ft.Card(
+                        content=ft.Container(
+                            content=ft.Column([
+                                ft.ListTile(
+                                    leading=ft.Icon(ft.icons.CALENDAR_TODAY, color=secondary_color),
+                                    title=ft.Text(f"{date} {exam_info['type']}고사", weight=ft.FontWeight.BOLD),
+                                    subtitle=ft.Text(f"평균: {exam_info['average']:.2f}점"),
+                                ),
+                                ft.Divider(),
+                                ft.Column([
+                                    ft.Text(f"{subject}: {score}점") 
+                                    for subject, score in exam_info['scores'].items()
+                                ], spacing=5)
+                            ]),
+                            padding=10
+                        ),
+                        elevation=3
+                    )
+                )
+        else:
             history_list.controls.append(ft.Text("기록이 없습니다.", size=16))
         
         page.views.append(
             ft.View(
                 "/history",
                 controls=[
-                    ft.AppBar(title=ft.Text("기록", size=30, weight=ft.FontWeight.BOLD)),
+                    ft.AppBar(
+                        leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=lambda _: page.go("/")),
+                        title=ft.Text("나의 성적 기록"),
+                        bgcolor=primary_color
+                    ),
                     history_list,
-                    ft.ElevatedButton("뒤로가기", on_click=lambda _: page.go("/"))
                 ]
             )
         )
         page.go("/history")
 
     def home(_=None):
-        page.views.clear()  # 기존 뷰를 모두 지웁니다
+        content = ft.ListView(
+            expand=1,
+            controls=[
+                ft.Text("시험 종류 선택", size=18, weight=ft.FontWeight.BOLD),
+                cg,
+                ft.Divider(height=1, color="white54"),
+                ft.Text("과목별 점수 입력", size=18, weight=ft.FontWeight.BOLD),
+                math,
+                korean,
+                english,
+                science,
+                social,
+                ft.ElevatedButton(
+                    content=ft.Text("계산하기"),
+                    on_click=calc,
+                    style=ft.ButtonStyle(
+                        color=ft.colors.WHITE,
+                        bgcolor=secondary_color,
+                        shape=ft.RoundedRectangleBorder(radius=8),
+                    )
+                ),
+            ],
+            spacing=20,
+            padding=20,
+        )
+        
         page.views.append(
             ft.View(
                 "/home",
                 controls=[
-                    ft.Text(
-                        "\n어떤 시험인지 선택해 주세요",
-                        size=20,
-                        weight=ft.FontWeight.BOLD,
+                    ft.AppBar(
+                        leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=lambda _: page.go("/")),
+                        title=ft.Text("새 시험 입력"),
+                        bgcolor=primary_color
                     ),
-                    cg,
-                    t,
-                    ft.Divider(height=1, color="white"),
-                    ft.Text(
-                        "과목별 점수를 입력해주세요", size=20, weight=ft.FontWeight.BOLD
-                    ),
-                    math,
-                    science,
-                    korean,
-                    english,
-                    social,
-                    ft.CupertinoFilledButton(
-                        content=ft.Text("계산하기!"),
-                        opacity_on_click=0.3,
-                        on_click=calc,
-                    ),
-                    ft.ElevatedButton("뒤로가기", on_click=lambda _: page.go("/"))
+                    content,
                 ],
             )
         )
-        page.go("/home")  # 뷰를 추가한 후 해당 페이지로 이동
+        page.go("/home")
 
-    # 점수 계산 후 결과 화면으로 이동하는 함수
     def calc(e):
-        try:
-            math_value = int(math.value)
-            korean_value = int(korean.value)
-            english_value = int(english.value)
-            science_value = int(science.value)
-            social_value = int(social.value)
+        if not cg.value:
+            show_snack_bar("시험 종류를 선택해주세요.")
+            return
 
-            # 평균 계산
-            avg = (
-                math_value + korean_value + english_value + science_value + social_value
-            ) / 5
+        scores = {
+            "수학": math.value,
+            "국어": korean.value,
+            "영어": english.value,
+            "과학": science.value,
+            "사회": social.value
+        }
 
-            # 막대그래프 컨테이너 생성
-            def create_bar(label, score, color):
-                return ft.Row(
-                    [
-                        ft.Container(
-                            width=score
-                            * 2,  # 점수에 따라 길이 변경 (최대 100점 * 2 = 200px)
-                            height=20,
-                            bgcolor=color,
-                            border_radius=5,
-                            alignment=ft.alignment.center,
-                            content=ft.Text(f"{score}", color="white"),
-                        ),
-                        ft.Text(label, width=50),
-                    ],
-                    alignment=ft.MainAxisAlignment.START,
-                )
+        for subject, score in scores.items():
+            if not validate_score(score):
+                show_snack_bar(f"{subject} 점수를 0에서 100 사이의 정수로 입력해주세요.")
+                return
 
-            # 과목별 막대그래프 생성
-            bars = [
-                create_bar("수학", math_value, "blue"),
-                create_bar("국어", korean_value, "green"),
-                create_bar("영어", english_value, "red"),
-                create_bar("과학", science_value, "purple"),
-                create_bar("사회", social_value, "orange"),
-            ]
+        scores = {k: int(v) for k, v in scores.items()}
+        avg = sum(scores.values()) / len(scores)
 
-            def handle_close(e):
-                page.close(dlg_modal)
-                page.go("/home")
+        def create_bar(label, score, color):
+            return ft.Container(
+                content=ft.Column([
+                    ft.Text(f"{label}: {score}", color=ft.colors.WHITE),
+                    ft.ProgressBar(value=score/100, bgcolor="#ffffff33", color=color)
+                ]),
+                margin=5
+            )
 
+        bars = [create_bar(subject, score, color) for (subject, score), color in 
+                zip(scores.items(), [primary_color, secondary_color, ft.colors.GREEN, ft.colors.PINK, ft.colors.PURPLE])]
+
+        def save(e):
             now = datetime.datetime.now()
+            date = now.strftime("%Y.%m.%d")
+            exam_data = load_data("exam_records.json")
+            exam_data[date] = {
+                "type": cg.value,
+                "average": avg,
+                "scores": scores
+            }
+            save_data(exam_data, "exam_records.json")
+            page.go("/")
 
-            def save(e):
-                with open("record.txt", "a", encoding="utf8") as file:
-                    file.write(
-                        "\n"
-                        + now.strftime("%Y.%m.%d")
-                        + " {} \n # 평균 점수: {}\n영어: {}\n사회: {}\n수학: {}\n국어: {}\n과학: {}\n".format(
-                            t.value,
-                            avg,
-                            english_value,
-                            social_value,
-                            math_value,
-                            korean_value,
-                            science_value,
-                        )
-                    )
-                    page.close(dlg_modal)
-                    page.go("/home")
-
-            global dlg_modal
-            dlg_modal = ft.AlertDialog(
-                modal=True,
-                title=ft.Text("저장할까요?"),
-                content=ft.Text("시험 기록을 저장할까요?"),
-                actions=[
-                    ft.TextButton("네", on_click=save),
-                    ft.TextButton("아니오", on_click=handle_close),
-                ],
-                actions_alignment=ft.MainAxisAlignment.END,
-            )
-
-            # 결과 화면으로 이동
-            page.views.clear()  # 기존 뷰를 모두 지웁니다
-            page.views.append(
-                ft.View(
-                    "/result",
-                    controls=[
-                        ft.Text(
-                            "\n\n당신의 {}고사 평균 점수는 {}점입니다.".format(
-                                avgval, int(avg)
+        page.views.append(
+            ft.View(
+                "/result",
+                controls=[
+                    ft.AppBar(
+                        leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=lambda _: page.go("/home")),
+                        title=ft.Text("시험 결과"),
+                        bgcolor=primary_color
+                    ),
+                    ft.ListView(
+                        expand=1,
+                        controls=[
+                            ft.Text(
+                                f"{cg.value}고사 평균 점수",
+                                size=24,
+                                weight=ft.FontWeight.BOLD,
                             ),
-                            size=15,
-                            weight=ft.FontWeight.BOLD,
-                        ),
-                        ft.Column(bars, spacing=10),  # 막대그래프를 세로로 나열
-                        ft.ElevatedButton(
-                            "저장하기", on_click=lambda e: page.open(dlg_modal)
-                        ),
-                        ft.ElevatedButton("다시 계산하기", on_click=home),
-                    ],
-                )
+                            ft.Text(
+                                f"{avg:.2f}점",
+                                size=36,
+                                weight=ft.FontWeight.BOLD,
+                                color=secondary_color
+                            ),
+                            ft.Container(height=20),
+                            *bars,
+                            ft.Container(height=20),
+                            ft.Row([
+                                ft.ElevatedButton(
+                                    "저장",
+                                    on_click=save,
+                                    style=ft.ButtonStyle(
+                                        color=ft.colors.WHITE,
+                                        bgcolor=secondary_color,
+                                        shape=ft.RoundedRectangleBorder(radius=8),
+                                    )
+                                ),
+                                ft.OutlinedButton(
+                                    "다시 입력", 
+                                    on_click=lambda _: page.go("/home"),
+                                    style=ft.ButtonStyle(
+                                        color=secondary_color,
+                                        side=ft.BorderSide(width=2, color=secondary_color),
+                                        shape=ft.RoundedRectangleBorder(radius=8),
+                                    )
+                                ),
+                            ], alignment=ft.MainAxisAlignment.SPACE_EVENLY),
+                        ],
+                        padding=20,
+                    ),
+                ],
             )
+        )
+        page.go("/result")
 
-            page.go("/result")
-
-        except ValueError:
-            dlg.content = ft.Text("올바른 점수를 입력해주세요.")
-            page.dialog = dlg
-            dlg.open = True
-            page.update()
-
-    # 라디오 그룹
-    t = ft.Text(weight=ft.FontWeight.BOLD)
-    cg = ft.RadioGroup(
-        content=ft.Column(
-            [
-                ft.Radio(value="중간", label="중간"),
-                ft.Radio(value="기말", label="기말"),
-            ]
-        ),
-        on_change=radiogroup_changed,
-    )
-
-    # 과목별 점수 입력 필드
-    math = ft.TextField(label="수학 점수")
-    korean = ft.TextField(label="국어 점수")
-    english = ft.TextField(label="영어 점수")
-    science = ft.TextField(label="과학 점수")
-    social = ft.TextField(label="사회 점수")
-
-    # 다이얼로그 정의
-    dlg = ft.AlertDialog(title=ft.Text("오류"))
-
-    # 라우트 변경 시 호출되는 함수
-    def route_change(route):
-        page.views.clear()
-        if page.route == "/":
-            page.views.append(
-                ft.View(
-                    "/",
-                    controls=[
-                        ft.Text("시험 평균 계산기", size=40, weight=ft.FontWeight.BOLD),
-                        ft.CupertinoFilledButton(
-                            content=ft.Text("계산하러 가기"),
-                            opacity_on_click=0.3,
-                            on_click=home,
-                        ),
-                        ft.CupertinoFilledButton(
-                            content=ft.Text("나의 기록"),
-                            opacity_on_click=0.3,
-                            on_click=view_history,
-                        ),
-                    ],
-                )
-            )
+    def show_snack_bar(message):
+        page.snack_bar = ft.SnackBar(content=ft.Text(message))
+        page.snack_bar.open = True
         page.update()
 
-    # 페이지 라우팅 설정
+    cg = ft.RadioGroup(
+        content=ft.Row(
+            [
+                ft.Radio(value="중간", label="중간고사"),
+                ft.Radio(value="기말", label="기말고사"),
+            ]
+        ),
+    )
+
+    math = ft.TextField(label="수학", suffix_text="/ 100", height=60, filled=True)
+    korean = ft.TextField(label="국어", suffix_text="/ 100", height=60, filled=True)
+    english = ft.TextField(label="영어", suffix_text="/ 100", height=60, filled=True)
+    science = ft.TextField(label="과학", suffix_text="/ 100", height=60, filled=True)
+    social = ft.TextField(label="사회", suffix_text="/ 100", height=60, filled=True)
+
+    def route_change(route):
+        if page.route == "/":
+            username = load_username()
+            if not username:
+                username_dialog()
+            else:
+                show_main_page(username)
+        page.update()
+
+    def username_dialog():
+        def save_name(e):
+            if not username_input.value:
+                return
+            save_username(username_input.value)
+            page.close()
+            show_main_page(username_input.value)
+
+        username_input = ft.TextField(label="이름을 입력해주세요", autofocus=True)
+        dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("환영합니다!"),
+            content=ft.Column([username_input], tight=True),
+            actions=[
+                ft.ElevatedButton(
+                    text="확인",
+                    on_click=save_name,
+                    style=ft.ButtonStyle(color=ft.colors.WHITE, bgcolor=secondary_color)
+                )
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
+        page.overlay.append(dlg)
+        dlg.open = True
+        page.update()
+
+    def show_calendar(_):
+        def handle_change(e):
+            selected_date.value = e.control.value.strftime('%Y-%m-%d')
+            page.update()
+
+        def handle_dismissal(e):
+            pass
+
+        selected_date = ft.Text()
+
+        page.views.append(
+            ft.View(
+                "/calendar",
+                controls=[
+                    ft.AppBar(
+                        leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=lambda _: page.go("/")),
+                        title=ft.Text("학사 일정"),
+                        bgcolor=primary_color
+                    ),
+                    ft.Column([
+                        ft.ElevatedButton(
+                            "날짜 선택",
+                            icon=ft.icons.CALENDAR_MONTH,
+                            on_click=lambda _: page.open(
+                                ft.DatePicker(
+                                    first_date=datetime.datetime(year=2023, month=1, day=1),
+                                    last_date=datetime.datetime(year=2024, month=12, day=31),
+                                    on_change=handle_change,
+                                    on_dismiss=handle_dismissal,
+                                )
+                            )
+                        ),
+                        selected_date,
+                    ], alignment=ft.MainAxisAlignment.CENTER, spacing=20)
+                ]
+            )
+        )
+        page.go("/calendar")
+
+    def show_timetable(_):
+        timetable_data = [
+            ["국어", "수학", "영어", "과학", "체육"],
+            ["사회", "영어", "수학", "음악", "국어"],
+            ["과학", "국어", "체육", "영어", "수학"],
+            ["음악", "사회", "국어", "수학", "영어"],
+            ["체육", "과학", "사회", "국어", "수학"],
+        ]
+
+        columns = [
+            ft.DataColumn(ft.Text("교시", size=12)),
+            ft.DataColumn(ft.Text("월", size=12)),
+            ft.DataColumn(ft.Text("화", size=12)),
+            ft.DataColumn(ft.Text("수", size=12)),
+            ft.DataColumn(ft.Text("목", size=12)),
+            ft.DataColumn(ft.Text("금", size=12)),
+        ]
+
+        rows = [
+            ft.DataRow(
+                cells=[
+                    ft.DataCell(ft.Text(f"{i+1}", size=12)),
+                    *[ft.DataCell(ft.Text(subject, size=12)) for subject in row]
+                ]
+            ) for i, row in enumerate(timetable_data)
+        ]
+
+        timetable = ft.DataTable(
+            columns=columns,
+            rows=rows,
+            column_spacing=10,
+            horizontal_lines=ft.border.BorderSide(1, ft.colors.GREY_400),
+            vertical_lines=ft.border.BorderSide(1, ft.colors.GREY_400),
+        )
+
+        page.views.append(
+            ft.View(
+                "/timetable",
+                controls=[
+                    ft.AppBar(
+                        leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=lambda _: page.go("/")),
+                        title=ft.Text("학급 시간표"),
+                        bgcolor=primary_color
+                    ),
+                    ft.Container(
+                        content=ft.Column([
+                            ft.Text("학급 시간표", size=20, weight=ft.FontWeight.BOLD),
+                            ft.Container(
+                                content=timetable,
+                                border=ft.border.all(1, ft.colors.GREY_400),
+                                border_radius=5,
+                                padding=10,
+                            ),
+                        ]),
+                        padding=20,
+                        alignment=ft.alignment.top_center,
+                    ),
+                ],
+                scroll=ft.ScrollMode.AUTO
+            )
+        )
+        page.go("/timetable")
+
+    def show_main_page(username):
+        latest_result = get_latest_exam_result()
+        page.views.clear()
+        page.views.append(
+            ft.View(
+                "/",
+                controls=[
+                    ft.AppBar(title=ft.Text("학생 도우미"), bgcolor=primary_color),
+                    ft.ListView(
+                        expand=1,
+                        controls=[
+                            ft.Card(
+                                content=ft.Container(
+                                    content=ft.Column([
+                                        ft.Text(f"안녕하세요,", size=20),
+                                        ft.Text(f"{username}님!", size=28, weight=ft.FontWeight.BOLD),
+                                        ft.Container(height=10),
+                                        ft.Text("최근 시험 결과", size=16, weight=ft.FontWeight.BOLD),
+                                        ft.Text(latest_result, size=14)
+                                    ]),
+                                    padding=20
+                                ),
+                                elevation=5,
+                                margin=10
+                            ),
+                            ft.Container(height=20),
+                            ft.ElevatedButton(
+                                content=ft.Row([
+                                    ft.Icon(ft.icons.ADD),
+                                    ft.Text("새 시험 입력", size=16)
+                                ]),
+                                on_click=home,
+                                style=ft.ButtonStyle(
+                                    color=ft.colors.WHITE,
+                                    bgcolor=secondary_color,
+                                    shape=ft.RoundedRectangleBorder(radius=8),
+                                ),
+                                width=250,
+                                height=50
+                            ),
+                            ft.OutlinedButton(
+                                content=ft.Row([
+                                    ft.Icon(ft.icons.HISTORY),
+                                    ft.Text("나의 성적 기록", size=16)
+                                ]),
+                                on_click=view_history,
+                                style=ft.ButtonStyle(
+                                    color=secondary_color,
+                                    side=ft.BorderSide(width=2, color=secondary_color),
+                                    shape=ft.RoundedRectangleBorder(radius=8),
+                                ),
+                                width=250,
+                                height=50
+                            ),
+                            ft.ElevatedButton(
+                                content=ft.Row([
+                                    ft.Icon(ft.icons.CALENDAR_TODAY),
+                                    ft.Text("학사 일정", size=16)
+                                ]),
+                                on_click=show_calendar,
+                                style=ft.ButtonStyle(
+                                    color=ft.colors.WHITE,
+                                    bgcolor=primary_color,
+                                    shape=ft.RoundedRectangleBorder(radius=8),
+                                ),
+                                width=250,
+                                height=50
+                            ),
+                            ft.ElevatedButton(
+                                content=ft.Row([
+                                    ft.Icon(ft.icons.SCHEDULE),
+                                    ft.Text("학급 시간표", size=16)
+                                ]),
+                                on_click=show_timetable,
+                                style=ft.ButtonStyle(
+                                    color=ft.colors.WHITE,
+                                    bgcolor=primary_color,
+                                    shape=ft.RoundedRectangleBorder(radius=8),
+                                ),
+                                width=250,
+                                height=50
+                            ),
+                        ],
+                        spacing=20,
+                        padding=20,
+                    )
+                ],
+            )
+        )
+
     page.on_route_change = route_change
-
-    # 시작 페이지 설정
     page.go("/")
-
 
 ft.app(target=main)
