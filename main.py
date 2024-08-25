@@ -6,9 +6,9 @@ def main(page: ft.Page):
     page.title = "학생 도우미"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
-    page.window_width = 360
-    page.window_height = 640
-    page.window_resizable = False
+    page.window.width = 360
+    page.window.height = 640
+    page.window.resizable = False
 
     # 색상 테마 설정
     primary_color = ft.colors.BLUE
@@ -258,33 +258,49 @@ def main(page: ft.Page):
     social = ft.TextField(label="사회", suffix_text="/ 100", height=60, filled=True)
 
     def route_change(route):
+        #page.views.clear()
         if page.route == "/":
             username = load_username()
             if not username:
                 username_dialog()
             else:
-                show_main_page(username)
+                page.go("/main")
+        elif page.route == "/main":
+            show_main_page(load_username())
         page.update()
 
     def username_dialog():
         def save_name(e):
             if not username_input.value:
+                show_snack_bar("이름을 입력해주세요.")
                 return
             save_username(username_input.value)
-            page.close()
-            show_main_page(username_input.value)
+            dlg.open = False
+            page.update()
+            page.go("/main")  # 메인 페이지로 이동
 
-        username_input = ft.TextField(label="이름을 입력해주세요", autofocus=True)
+        username_input = ft.TextField(
+            label="이름을 입력해주세요",
+            autofocus=True,
+            on_submit=save_name,
+            border_color=secondary_color,
+            focused_border_color=primary_color,
+        )
+
         dlg = ft.AlertDialog(
             modal=True,
-            title=ft.Text("환영합니다!"),
-            content=ft.Column([username_input], tight=True),
+            title=ft.Text("환영합니다!", size=24, weight=ft.FontWeight.BOLD),
+            content=ft.Column([
+                ft.Text("학생 도우미 앱에 오신 것을 환영합니다!", size=16),
+                ft.Text("이름을 입력하고 시작해보세요.", size=14, color="grey"),
+                username_input
+            ], tight=True, spacing=20),
             actions=[
                 ft.ElevatedButton(
-                    text="확인",
+                    text="시작하기",
                     on_click=save_name,
                     style=ft.ButtonStyle(color=ft.colors.WHITE, bgcolor=secondary_color)
-                )
+                ),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -397,10 +413,9 @@ def main(page: ft.Page):
 
     def show_main_page(username):
         latest_result = get_latest_exam_result()
-        page.views.clear()
         page.views.append(
             ft.View(
-                "/",
+                "/main",
                 controls=[
                     ft.AppBar(title=ft.Text("학생 도우미"), bgcolor=primary_color),
                     ft.ListView(
