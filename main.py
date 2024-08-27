@@ -32,6 +32,11 @@ def main(page: ft.Page):
         user_data = load_data("user_data.json")
         user_data["username"] = username
         save_data(user_data, "user_data.json")
+    
+    def save_school(school):
+        user_data = load_data("user_data.json")
+        user_data["school"] = school
+        save_data(user_data, "user_data.json")
 
     def load_username():
         user_data = load_data("user_data.json")
@@ -277,7 +282,7 @@ def main(page: ft.Page):
             save_username(username_input.value)
             dlg.open = False
             page.update()
-            page.go("/main")  # 메인 페이지로 이동
+            school_dialog()  # 메인 페이지로 이동
 
         username_input = ft.TextField(
             label="이름을 입력해주세요",
@@ -307,6 +312,47 @@ def main(page: ft.Page):
 
         page.overlay.append(dlg)
         dlg.open = True
+        page.update()
+    
+    def school_dialog():
+        raise NotImplementedError
+        def save_school(e):
+            if not school_input.value:
+                show_snack_bar("현재 재학중인 학교 이름을 입력해주세요.")
+                return
+            save_school(school_input.value)
+            schooldlg.open = False
+            page.update()
+            page.go("/main")  # 메인 페이지로 이동
+
+        school_input = ft.TextField(
+            label="학교 이름을 입력해주세요",
+            autofocus=True,
+            on_submit=save_school,
+            border_color=secondary_color,
+            focused_border_color=primary_color,
+        )
+
+        schooldlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("어느 학교에 다니시나요?", size=24, weight=ft.FontWeight.BOLD),
+            content=ft.Column([
+                ft.Text("학생 도우미 앱에 오신 것을 환영합니다!", size=16),
+                ft.Text("학교 이름을 입력하고 시작해보세요.", size=14, color="grey"),
+                school_input
+            ], tight=True, spacing=20),
+            actions=[
+                ft.ElevatedButton(
+                    text="시작하기",
+                    on_click=save_school,
+                    style=ft.ButtonStyle(color=ft.colors.WHITE, bgcolor=secondary_color)
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
+        page.overlay.append(schooldlg)
+        schooldlg.open = True
         page.update()
 
     def show_calendar(_):
