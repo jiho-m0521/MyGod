@@ -1,6 +1,8 @@
 import datetime
 import flet as ft
 import json
+import sys
+
 
 def main(page: ft.Page):
     page.title = "학생 도우미"
@@ -34,13 +36,17 @@ def main(page: ft.Page):
         save_data(user_data, "user_data.json")
     
     def save_school(school):
-        user_data = load_data("user_data.json")
-        user_data["school"] = school
-        save_data(user_data, "user_data.json")
-
+        school_data = load_data("user_data.json")
+        school_data["school"] = school
+        save_data(school_data, "user_data.json")
+    
     def load_username():
         user_data = load_data("user_data.json")
         return user_data.get("username", "")
+    
+    def load_school():
+        school_data = load_data("user_data.json")
+        return school_data.get("school", "")
 
     def get_latest_exam_result():
         exam_data = load_data("exam_records.json")
@@ -263,17 +269,16 @@ def main(page: ft.Page):
     social = ft.TextField(label="사회", suffix_text="/ 100", height=60, filled=True)
 
     def route_change(route):
-        #page.views.clear()
         if page.route == "/":
             username = load_username()
             if not username:
-                username_dialog()
+                username_dialog()  # 사용자 이름 입력 대화상자 열기
             else:
-                page.go("/main")
+                page.go("/main")  # 사용자 이름이 있으면 메인 페이지로 이동
         elif page.route == "/main":
             show_main_page(load_username())
         page.update()
-
+        
     def username_dialog():
         def save_name(e):
             if not username_input.value:
@@ -315,7 +320,7 @@ def main(page: ft.Page):
         page.update()
     
     def school_dialog():
-        raise NotImplementedError
+        
         def save_school(e):
             if not school_input.value:
                 show_snack_bar("현재 재학중인 학교 이름을 입력해주세요.")
