@@ -271,6 +271,8 @@ def main(page: ft.Page):
     def route_change(route):
         if page.route == "/":
             username = load_username()
+            global school
+            school = load_school()
             if not username:
                 username_dialog()  # 사용자 이름 입력 대화상자 열기
             else:
@@ -279,85 +281,48 @@ def main(page: ft.Page):
             show_main_page(load_username())
         page.update()
         
+    dd = ft.Dropdown(
+        label="학교 종류",
+        hint_text="중/고등",
+        width=100,
+        options=[
+            ft.dropdown.Option("중학교"),
+            ft.dropdown.Option("고등학교"),          
+        ],
+        autofocus=True,
+    )
+    
     def username_dialog():
-        def save_name(e):
-            if not username_input.value:
-                show_snack_bar("이름을 입력해주세요.")
-                return
-            save_username(username_input.value)
-            dlg.open = False
-            page.update()
-            school_dialog()  # 메인 페이지로 이동
-
-        username_input = ft.TextField(
-            label="이름을 입력해주세요",
-            autofocus=True,
-            on_submit=save_name,
-            border_color=secondary_color,
-            focused_border_color=primary_color,
-        )
-
-        dlg = ft.AlertDialog(
+        username_field = ft.TextField(label="이름을 입력하세요")
+        school_field = ft.TextField(label="학교 이름을 입력하세요")
+        dialog = ft.AlertDialog(
             modal=True,
             title=ft.Text("환영합니다!", size=24, weight=ft.FontWeight.BOLD),
             content=ft.Column([
                 ft.Text("학생 도우미 앱에 오신 것을 환영합니다!", size=16),
-                ft.Text("이름을 입력하고 시작해보세요.", size=14, color="grey"),
-                username_input
+                ft.Text("이름과 현재 재학 중인 학교를 입력하고 시작해보세요.", size=14, color="grey"),
+                username_field,
+                school_field,
+                dd,
+                ft.Text("학교 란에는 학교 이름만 입력해주세요!\n ex. 중학교 이름이 서초중학교라면: '서초'만 입력해주세요", size=14, color="blue", weight=ft.FontWeight.BOLD),
+                
             ], tight=True, spacing=20),
+            
             actions=[
-                ft.ElevatedButton(
-                    text="시작하기",
-                    on_click=save_name,
-                    style=ft.ButtonStyle(color=ft.colors.WHITE, bgcolor=secondary_color)
-                ),
+                ft.TextButton(
+                    "확인",
+                    on_click=lambda e: (
+                        save_username(username_field.value),
+                        save_school(school_field.value + dd.value),
+                        page.go("/main"),
+                        
+                    )
+                )
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
-
-        page.overlay.append(dlg)
-        dlg.open = True
-        page.update()
-    
-    def school_dialog():
-        
-        def save_school(e):
-            if not school_input.value:
-                show_snack_bar("현재 재학중인 학교 이름을 입력해주세요.")
-                return
-            save_school(school_input.value)
-            schooldlg.open = False
-            page.update()
-            page.go("/main")  # 메인 페이지로 이동
-
-        school_input = ft.TextField(
-            label="학교 이름을 입력해주세요",
-            autofocus=True,
-            on_submit=save_school,
-            border_color=secondary_color,
-            focused_border_color=primary_color,
-        )
-
-        schooldlg = ft.AlertDialog(
-            modal=True,
-            title=ft.Text("어느 학교에 다니시나요?", size=24, weight=ft.FontWeight.BOLD),
-            content=ft.Column([
-                ft.Text("학생 도우미 앱에 오신 것을 환영합니다!", size=16),
-                ft.Text("학교 이름을 입력하고 시작해보세요.", size=14, color="grey"),
-                school_input
-            ], tight=True, spacing=20),
-            actions=[
-                ft.ElevatedButton(
-                    text="시작하기",
-                    on_click=save_school,
-                    style=ft.ButtonStyle(color=ft.colors.WHITE, bgcolor=secondary_color)
-                ),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-        )
-
-        page.overlay.append(schooldlg)
-        schooldlg.open = True
+        page.dialog = dialog
+        dialog.open = True
         page.update()
 
     def show_calendar(_):
@@ -477,7 +442,8 @@ def main(page: ft.Page):
                                     content=ft.Column([
                                         ft.Text(f"안녕하세요,", size=20),
                                         ft.Text(f"{username}님!", size=28, weight=ft.FontWeight.BOLD),
-                                        ft.Container(height=10),
+                                        ft.Text(f"재학 중인 학교: {school}", size=18),
+                                        ft.Divider(height=10),
                                         ft.Text("최근 시험 결과", size=16, weight=ft.FontWeight.BOLD),
                                         ft.Text(latest_result, size=14)
                                     ]),
