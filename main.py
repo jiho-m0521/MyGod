@@ -1,7 +1,6 @@
 import datetime
 import flet as ft
 import json
-import sys
 
 
 def main(page: ft.Page):
