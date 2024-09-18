@@ -1,0 +1,2 @@
+# 교육청 OPENAPI 키
+6d66c4f0983447aa8bf0df3f7ef043e5
