@@ -1,7 +1,32 @@
 import datetime
 import flet as ft
 import json
+import requests
 
+API_KEY = "6d66c4f0983447aa8bf0df3f7ef043e5"
+BASE_URL = "https://open.neis.go.kr/hub/SchoolSchedule"  # Replace with actual OpenAPI URL
+
+def get_academic_schedule():
+    headers = {
+        "Authorization": f"Bearer {API_KEY}"
+    }
+    url = f"{BASE_URL}/schedule"  # Replace with actual endpoint
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()  # Assuming it returns JSON data
+    else:
+        return None
+
+def get_timetable():
+    headers = {
+        "Authorization": f"Bearer {API_KEY}"
+    }
+    url = f"{BASE_URL}/timetable"  # Replace with actual endpoint
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()  # Assuming it returns JSON data
+    else:
+        return None
 
 def main(page: ft.Page):
     page.title = "학생 도우미"
@@ -325,106 +350,97 @@ def main(page: ft.Page):
         page.update()
 
     def show_calendar(_):
-        def handle_change(e):
-            selected_date.value = e.control.value.strftime('%Y-%m-%d')
-            page.update()
+        schedule_data = get_academic_schedule()
 
-        def handle_dismissal(e):
-            pass
+        if schedule_data:
+            selected_date = ft.Text()
 
-        selected_date = ft.Text()
-
-        page.views.append(
-            ft.View(
-                "/calendar",
-                controls=[
-                    ft.AppBar(
-                        leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=lambda _: page.go("/")),
-                        title=ft.Text("학사 일정"),
-                        bgcolor=primary_color
-                    ),
-                    ft.Column([
-                        ft.ElevatedButton(
-                            "날짜 선택",
-                            icon=ft.icons.CALENDAR_MONTH,
-                            on_click=lambda _: page.open(
-                                ft.DatePicker(
-                                    first_date=datetime.datetime(year=2023, month=1, day=1),
-                                    last_date=datetime.datetime(year=2024, month=12, day=31),
-                                    on_change=handle_change,
-                                    on_dismiss=handle_dismissal,
-                                )
-                            )
+            page.views.append(
+                ft.View(
+                    "/calendar",
+                    controls=[
+                        ft.AppBar(
+                            leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=lambda _: page.go("/")),
+                            title=ft.Text("학사 일정"),
+                            bgcolor=primary_color
                         ),
-                        selected_date,
-                    ], alignment=ft.MainAxisAlignment.CENTER, spacing=20)
-                ]
+                        ft.Column([
+                            ft.Text("학사 일정", size=20, weight=ft.FontWeight.BOLD),
+                            ft.ListView(
+                                controls=[
+                                    ft.Text(f"날짜: {event['date']}, 일정: {event['event']}", size=16)
+                                    for event in schedule_data
+                                ]
+                            ),
+                        ], alignment=ft.MainAxisAlignment.CENTER, spacing=20)
+                    ]
+                )
             )
-        )
-        page.go("/calendar")
+            page.go("/calendar")
+        else:
+            show_snack_bar("학사 일정을 불러올 수 없습니다.")
+
 
     def show_timetable(_):
-        timetable_data = [
-            ["국어", "수학", "영어", "과학", "체육"],
-            ["사회", "영어", "수학", "음악", "국어"],
-            ["과학", "국어", "체육", "영어", "수학"],
-            ["음악", "사회", "국어", "수학", "영어"],
-            ["체육", "과학", "사회", "국어", "수학"],
-        ]
+        timetable_data = get_timetable()
 
-        columns = [
-            ft.DataColumn(ft.Text("교시", size=12)),
-            ft.DataColumn(ft.Text("월", size=12)),
-            ft.DataColumn(ft.Text("화", size=12)),
-            ft.DataColumn(ft.Text("수", size=12)),
-            ft.DataColumn(ft.Text("목", size=12)),
-            ft.DataColumn(ft.Text("금", size=12)),
-        ]
+        if timetable_data:
+            columns = [
+                ft.DataColumn(ft.Text("교시", size=12)),
+                ft.DataColumn(ft.Text("월", size=12)),
+                ft.DataColumn(ft.Text("화", size=12)),
+                ft.DataColumn(ft.Text("수", size=12)),
+                ft.DataColumn(ft.Text("목", size=12)),
+                ft.DataColumn(ft.Text("금", size=12)),
+            ]
 
-        rows = [
-            ft.DataRow(
-                cells=[
-                    ft.DataCell(ft.Text(f"{i+1}", size=12)),
-                    *[ft.DataCell(ft.Text(subject, size=12)) for subject in row]
-                ]
-            ) for i, row in enumerate(timetable_data)
-        ]
+            rows = [
+                ft.DataRow(
+                    cells=[
+                        ft.DataCell(ft.Text(f"{i+1}", size=12)),
+                        *[ft.DataCell(ft.Text(subject, size=12)) for subject in day['subjects']]
+                    ]
+                ) for i, day in enumerate(timetable_data)
+            ]
 
-        timetable = ft.DataTable(
-            columns=columns,
-            rows=rows,
-            column_spacing=10,
-            horizontal_lines=ft.border.BorderSide(1, ft.colors.GREY_400),
-            vertical_lines=ft.border.BorderSide(1, ft.colors.GREY_400),
-        )
-
-        page.views.append(
-            ft.View(
-                "/timetable",
-                controls=[
-                    ft.AppBar(
-                        leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=lambda _: page.go("/")),
-                        title=ft.Text("학급 시간표"),
-                        bgcolor=primary_color
-                    ),
-                    ft.Container(
-                        content=ft.Column([
-                            ft.Text("학급 시간표", size=20, weight=ft.FontWeight.BOLD),
-                            ft.Container(
-                                content=timetable,
-                                border=ft.border.all(1, ft.colors.GREY_400),
-                                border_radius=5,
-                                padding=10,
-                            ),
-                        ]),
-                        padding=20,
-                        alignment=ft.alignment.top_center,
-                    ),
-                ],
-                scroll=ft.ScrollMode.AUTO
+            timetable = ft.DataTable(
+                columns=columns,
+                rows=rows,
+                column_spacing=10,
+                horizontal_lines=ft.border.BorderSide(1, ft.colors.GREY_400),
+                vertical_lines=ft.border.BorderSide(1, ft.colors.GREY_400),
             )
-        )
-        page.go("/timetable")
+
+            page.views.append(
+                ft.View(
+                    "/timetable",
+                    controls=[
+                        ft.AppBar(
+                            leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=lambda _: page.go("/")),
+                            title=ft.Text("학급 시간표"),
+                            bgcolor=primary_color
+                        ),
+                        ft.Container(
+                            content=ft.Column([
+                                ft.Text("학급 시간표", size=20, weight=ft.FontWeight.BOLD),
+                                ft.Container(
+                                    content=timetable,
+                                    border=ft.border.all(1, ft.colors.GREY_400),
+                                    border_radius=5,
+                                    padding=10,
+                                ),
+                            ]),
+                            padding=20,
+                            alignment=ft.alignment.top_center,
+                        ),
+                    ],
+                    scroll=ft.ScrollMode.AUTO
+                )
+            )
+            page.go("/timetable")
+        else:
+            show_snack_bar("시간표를 불러올 수 없습니다.")
+
 
     def show_main_page(username):
         latest_result = get_latest_exam_result()
