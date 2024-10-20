@@ -304,7 +304,10 @@ def main(page: ft.Page):
         elif page.route == "/main":
             show_main_page(load_username())
         elif page.route == "/todo":
-            show_todo()  # Show the todo app when the route is /todo
+            try:
+                show_todo()  # Show the todo app when the route is /todo
+            except Exception as e:
+                pass
         page.update()
         
     dd = ft.Dropdown(
@@ -382,27 +385,11 @@ def main(page: ft.Page):
         else:
             show_snack_bar("학사 일정을 불러올 수 없습니다.")
 
-    def show_todo():
-        todo_app = TodoApp()  # Create an instance of the TodoApp
-        page.views.append(
-            ft.View(
-                "/todo",
-                controls=[
-                    ft.AppBar(
-                        leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=lambda _: page.go("/")),
-                        title=ft.Text("할 일 목록"),
-                        bgcolor=primary_color
-                    ),
-                    todo_app,
-                ],
-            )
-        )
-        page.go("/todo")
-
     # Define the TodoApp class as specified in your todo.txt
     class TodoApp(ft.Column):
         def __init__(self):
             super().__init__()
+            
 
             self.new_task = ft.TextField(
                 hint_text="할 일을 입력하세요", on_submit=self.add_clicked, expand=True
@@ -440,6 +427,10 @@ def main(page: ft.Page):
                                 ft.OutlinedButton(
                                     text="완료된 항목 지우기", on_click=self.clear_clicked
                                 ),
+                                
+                                ft.OutlinedButton(
+                                    text="모두 지우기", on_click=self.clear_all
+                                ),
                             ],
                         ),
                     ],
@@ -450,6 +441,9 @@ def main(page: ft.Page):
             if self.new_task.value:
                 task = Task(self.new_task.value, self.task_status_change, self.task_delete)
                 self.tasks.controls.append(task)
+                user_data = load_data("user_data.json")
+                user_data["todo"] = self.new_task.value
+                save_data(user_data, "user_data.json")
                 self.new_task.value = ""
                 self.new_task.focus()
                 self.update()
@@ -468,6 +462,10 @@ def main(page: ft.Page):
             for task in self.tasks.controls[:]:
                 if task.completed:
                     self.task_delete(task)
+
+        def clear_all(self, e):
+            for task in self.tasks.controls[:]:
+                self.task_delete(task)
 
         def before_update(self):
             status = self.filter.tabs[self.filter.selected_index].text
@@ -553,6 +551,28 @@ def main(page: ft.Page):
 
         def delete_clicked(self, e):
             self.task_delete(self)
+
+
+    def show_todo(_):
+        try:
+            todo_app = TodoApp()  # Create an instance of the TodoApp
+            page.views.append(
+                ft.View(
+                    "/todo",
+                    controls=[
+                        ft.AppBar(
+                            leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=lambda _: page.go("/")),
+                            title=ft.Text("할 일 목록"),
+                            bgcolor=primary_color
+                        ),
+                        todo_app,
+                    ],
+                )
+            )
+            page.go("/todo")
+        except Exception as e:
+            pass
+
 
 
     def show_timetable(_):
@@ -703,9 +723,9 @@ def main(page: ft.Page):
                                     ft.Icon(ft.icons.CHECK_CIRCLE),
                                     ft.Text("할 일 트래커", size=16)
                                 ]),
-                                on_click=show_timetable,
+                                on_click=show_todo,
                                 style=ft.ButtonStyle(
-                                    color=ft.colors.BLUE_400,
+                                    color=ft.colors.GREEN,
                                     bgcolor=primary_color,
                                     shape=ft.RoundedRectangleBorder(radius=8),
                                 ),
