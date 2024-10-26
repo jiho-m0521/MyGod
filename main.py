@@ -1,32 +1,7 @@
 import datetime
 import flet as ft
 import json
-import requests
 
-API_KEY = "6d66c4f0983447aa8bf0df3f7ef043e5"
-BASE_URL = "https://open.neis.go.kr/hub/SchoolSchedule"  # Replace with actual OpenAPI URL
-
-def get_academic_schedule():
-    headers = {
-        "Authorization": f"Bearer {API_KEY}"
-    }
-    url = f"{BASE_URL}/schedule"  # Replace with actual endpoint
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.json()  # Assuming it returns JSON data
-    else:
-        return None
-
-def get_timetable():
-    headers = {
-        "Authorization": f"Bearer {API_KEY}"
-    }
-    url = f"{BASE_URL}/timetable"  # Replace with actual endpoint
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.json()  # Assuming it returns JSON data
-    else:
-        return None
 
 def main(page: ft.Page):
     page.title = "학생 도우미"
@@ -294,9 +269,10 @@ def main(page: ft.Page):
 
     def route_change(route):
         if page.route == "/":
-            username = load_username()
             global school
             school = load_school()
+            username = load_username()
+        
             if not username:
                 username_dialog()  # 사용자 이름 입력 대화상자 열기
             else:
@@ -324,6 +300,20 @@ def main(page: ft.Page):
     def username_dialog():
         username_field = ft.TextField(label="이름을 입력하세요")
         school_field = ft.TextField(label="학교 이름을 입력하세요")
+
+        def confirm(e):
+            save_username(username_field.value)
+            save_school(school_field.value + dd.value)
+            # 여기에서 직접적으로 업데이트합니다.
+            global school  # 전역으로 선언된 변수를 사용할 수 있도록 합니다.
+            school = load_school()
+            
+            global username  # 전역으로 선언된 변수를 사용할 수 있도록 합니다.
+            username = load_username()
+            
+            page.go("/main")
+            show_main_page(username)  # 업데이트된 정보를 사용하여 화면을 갱신합니다.
+
         dialog = ft.AlertDialog(
             modal=True,
             title=ft.Text("환영합니다!", size=24, weight=ft.FontWeight.BOLD),
@@ -334,18 +324,12 @@ def main(page: ft.Page):
                 school_field,
                 dd,
                 ft.Text("학교 란에는 학교 이름만 입력해주세요!\n ex. 중학교 이름이 서초중학교라면: '서초'만 입력해주세요", size=14, color="blue", weight=ft.FontWeight.BOLD),
-                
             ], tight=True, spacing=20),
             
             actions=[
                 ft.TextButton(
                     "확인",
-                    on_click=lambda e: (
-                        save_username(username_field.value),
-                        save_school(school_field.value + dd.value),
-                        page.go("/main"),
-                        
-                    )
+                    on_click=confirm  # 다른 내부 함수를 사용하여 변경 적용을 호출합니다.
                 )
             ],
             actions_alignment=ft.MainAxisAlignment.END,
@@ -355,7 +339,7 @@ def main(page: ft.Page):
         page.update()
 
     def show_calendar(_):
-        schedule_data = get_academic_schedule()
+        schedule_data = ""
 
         if schedule_data:
             selected_date = ft.Text()
@@ -576,7 +560,7 @@ def main(page: ft.Page):
 
 
     def show_timetable(_):
-        timetable_data = get_timetable()
+        timetable_data = ""
 
         if timetable_data:
             columns = [
